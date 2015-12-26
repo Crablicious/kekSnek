@@ -1,2 +1,2 @@
-# kekSnek
+# kek_snek
 Distributed Snake.
