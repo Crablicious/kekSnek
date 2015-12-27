@@ -16,22 +16,6 @@
 #include "defs.h"
 #include "network.h"
 
-
-//static struct sockaddr_in player0;
-//static struct sockaddr_in player1;
-
-static struct sockaddr_in *players;
-
-void set_num_players(int num_of_players){
-  players = calloc((num_of_players+1), sizeof(struct sockaddr_in));
-}
-
-void init_player(int num, struct sockaddr_in player){
-  players[num].sin_family = player.sin_family;
-  players[num].sin_port = player.sin_port;
-  players[num].sin_addr.s_addr = player.sin_addr.s_addr;
-}
-
 int init_socket(int type){
   int sockfd;
   //Set up socket
@@ -55,26 +39,4 @@ void bind_socket(int sockfd, int port){
   if((bind(sockfd, (struct sockaddr*)&serv_addr, serv_len)) < 0){
     pexit("Error bind: ");
   }
-}
-
-void send_player(int sockfd, int num, char *msg){
-  ssize_t count;
-  count = sendto(sockfd, msg, strlen(msg)+1, 0, (struct sockaddr*)&players[num], sizeof(struct sockaddr_in));
-  if(count < 0){
-    pexit("Error sending: ");
-  }
-}
-
-void send_all(int sockfd, char *msg){
-  ssize_t count;  
-  for(int i = 0; players[i].sin_port != 0; i++){
-    count = sendto(sockfd, msg, strlen(msg)+1, 0, (struct sockaddr*)&players[i], sizeof(struct sockaddr_in));
-    if(count < 0){
-      pexit("Error sending: ");
-    }
-  }
-}
-
-void free_all_players(){
-  free(players);
 }

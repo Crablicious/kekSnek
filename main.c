@@ -14,6 +14,8 @@
 #include "ascii_lib/ascii_lib.h"
 #include "defs.h"
 #include "network.h"
+#include "network_server.h"
+
 
 /**
 1 player starts as server. Forks to server and client automatically connects itself to server. 
@@ -46,17 +48,32 @@ void get_players(int sockfd, int num_of_players){
   }
 }
 
-void distribute_field(){
-  //initiate field size and number of objects.
-  //send field;
+void distribute_field(int sockfd){
+  int height = 20;
+  int width = 20;
+  char backg = ' ';
+  int num_of_objects = get_num_players()*MAX_LENGTH+MAX_APPLES;
+  char buffer[100];
+  sprintf(buffer, "1 %d %d %c %d", width, height, backg, num_of_objects);
+  send_all(sockfd, buffer, 1);
+  ack_all(sockfd, buffer);
+  //Field is now distributed to all players. Doesn't deal with disconnected clients atm.
+}
+
+void distribute_start_objects(int sockfd){
+  int num_players = get_num_players();
+  for(int i = 0; i < num_players; i++){
+    //Create snek and bläst it out.
+    //Need to keep track of the linked snake.
+  }
 }
 
 int initiate_game(){
   int sockfd = init_socket(SOCK_DGRAM);
   bind_socket(sockfd, SERVER_PORT);
   get_players(sockfd, 2);
-  distribute_field();
-
+  distribute_field(sockfd);
+  distribute_start_objects(sockfd);
   return sockfd;
 }
 
@@ -81,7 +98,7 @@ int main(int argc, char *argv[])
   }
   if(pid){ //server
     int sockfd = initiate_game();
-
+    
     wait(NULL); //Wait for Client to terminate.
   }else{ //client
     static char *argvc[]={"client", address, NULL};
