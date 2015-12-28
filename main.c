@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE	199309L
+
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdlib.h>
@@ -9,6 +11,8 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <time.h>
+#include <sys/select.h>
 
 
 #include "ascii_lib/ascii_lib.h"
@@ -45,12 +49,8 @@ void get_players(int sockfd, int num_of_players){
     if(count < 0){
       pexit("Recvfrom error: ");
     }else{
-      printf("test player %d exists %d\n",i,player_exists(inc_player));
       if(!player_exists(inc_player)){
-        
-        printf("before puts\n");
         puts(buffer);
-        printf("after puts\n");
         init_player(i, inc_player);
       }
       strcpy(buffer, "!");
@@ -124,6 +124,64 @@ void move_object(int sockfd, int objID, int posx, int posy){
   send_all(sockfd, buffer, 0);
 }
 
+/*
+void collect_char(int sockfd, char *buffer, char *latest_char, int sec, int nsec){
+  ssize_t count;
+  
+  count = read(sockfd, buffer, MAX_MSG_SIZE);
+  
+}*/
+
+
+
+void game_loop(int sockfd){
+  char *buffer = malloc(MAX_MSG_SIZE);
+  int isRunning = 1;
+  char *latest_char = calloc(MAX_PLAYERS, sizeof(char));
+  ssize_t count;
+  
+  int selectVal, tmp_ID;
+  char tmp_c;
+  struct timeval timeout;
+  fd_set fds;
+  
+  //long tot_nsec = NSEC_FRAME + SEC_FRAME*1000000000;
+  long sec = SEC_FRAME;
+  long nsec = NSEC_FRAME; //tot_nsec*4/5%1000000000;
+  
+  struct timespec end_time;
+  struct timespec curr_time;
+  while(isRunning){
+    puts("in game loop");
+    clock_gettime(CLOCK_REALTIME, &end_time);
+    end_time.tv_sec += sec;
+    end_time.tv_nsec += nsec;
+    
+    timeout.tv_sec = SEC_READ_TO;
+    timeout.tv_usec = USEC_READ_TO;  
+    FD_ZERO(&fds);
+    FD_SET(sockfd, &fds);  
+    
+    selectVal = select(sockfd + 1, &fds, NULL, NULL, &timeout);
+    if(selectVal == -1){
+      pexit("Error select");
+    }else if(selectVal == 1){
+      count = recv(sockfd, buffer, MAX_MSG_SIZE, 0);
+      if(count < 0){
+        pexit("error recv game_loop");
+      }
+      sscanf(buffer, "%c %d", &tmp_c, &tmp_ID);
+      latest_char[tmp_ID] = tmp_c;
+    }
+    clock_gettime(CLOCK_REALTIME, &curr_time);
+    if((curr_time.tv_sec > end_time.tv_sec) || (curr_time.tv_sec == end_time.tv_sec && curr_time.tv_nsec >= end_time.tv_nsec)){
+      //process_inputs();
+      printf("CHARACTER IS: %c\n",latest_char[0]);
+      isRunning = 0;
+    }
+  }
+}
+
 int main(int argc, char *argv[])
 {
   int is_server = 0;
@@ -145,8 +203,8 @@ int main(int argc, char *argv[])
   }
   if(pid){ //server
     int sockfd = initiate_game();
-    //move_object(sockfd, 0, 5, 5);
-    puts("BEFORE WAIT");
+    game_loop(sockfd);
+    
     wait(NULL); //Wait for Client to terminate.
   }else{ //client
     static char *argvc[]={"client", address, NULL};
@@ -156,6 +214,4 @@ int main(int argc, char *argv[])
   return 0;
 }
     
-void game_loop(){
-  
-}
+

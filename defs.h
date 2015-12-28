@@ -9,11 +9,16 @@
 #define START_LENGTH 1
 #define MAX_MSG_SIZE 512
 #define MAX_DESIGN_SIZE 2
-#define MAX_PLAYERS 2
+#define MAX_PLAYERS 1
 
+#define SEC_FRAME 2
+#define NSEC_FRAME 0
 
 #define ACK_TO 3
+#define SERV_TALK_TO 5
 
+#define SEC_READ_TO 0
+#define USEC_READ_TO 200000  
 
 void pexit(char *error);
 

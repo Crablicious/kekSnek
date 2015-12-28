@@ -69,6 +69,9 @@ void ack_player(int sockfd, int num, int ack_num){
   ssize_t count;
   char buffer[20];
   count = read(sockfd, buffer, 20); 
+  if(count < 0){
+    pexit("Error read ack_player");
+  }
 }
 
 void ack_all(int sockfd, char *resend_msg, int catID, int ack_num, int objID){
@@ -119,7 +122,6 @@ void ack_all(int sockfd, char *resend_msg, int catID, int ack_num, int objID){
 int player_exists(struct sockaddr_in test_play){
   for(int i = 0; players[i].sin_port != 0; i++){
     if((test_play.sin_port == players[i].sin_port) && (test_play.sin_addr.s_addr == players[i].sin_addr.s_addr)){
-      printf("\nports: %d %d, add: %d %d\n",test_play.sin_port,players[i].sin_port,test_play.sin_addr.s_addr,players[i].sin_addr.s_addr);
       return 1;
     }
   }
