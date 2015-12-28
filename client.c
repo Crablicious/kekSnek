@@ -1,4 +1,6 @@
 #define _POSIX_C_SOURCE	199309L
+#define _BSD_SOURCE
+
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
@@ -9,6 +11,9 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <math.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 #include "ascii_lib/ascii_lib.h"
@@ -28,7 +33,7 @@ int isRunning;
 int myID;
 
 
-void *server_talker_thread(void){
+void *server_talker_thread(char *address){
   int sockfd = init_socket(SOCK_DGRAM);
   bind_socket(sockfd, CLIENT_PORT);
   char *buffer = malloc(MAX_MSG_SIZE);
@@ -41,12 +46,50 @@ void *server_talker_thread(void){
   char  backg;
   struct ascii_object tmp_obj;
   struct position *tmp_pos;
+  
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(SERVER_PORT);
+  inet_aton(address, &serv_addr.sin_addr);
+  serv_addr_s = sizeof(struct sockaddr);
+  int selectVal;  
+  struct timeval timeout;
+  fd_set fds;
+  strcpy(buffer, "!");
+  int got_ack = 0;
+  //Get into game TODO: MAKE THIS SAFE
+  while(!got_ack){ 
+    count = sendto(sockfd, buffer, strlen(buffer)+1, 0, (struct sockaddr *)&serv_addr, serv_addr_s);
+    if(count < 0){
+      pexit("Error sendto ACK: ");
+    }
+    timeout.tv_sec = ACK_TO;
+    timeout.tv_usec = 0;  
+    FD_ZERO(&fds);
+    FD_SET(sockfd, &fds);  
+    
+    selectVal = select(sockfd + 1, &fds, NULL, NULL, &timeout);
+    if(selectVal == -1){
+      pexit("Error select");
+    }else if(selectVal == 1){
+      strcpy(buffer, "!");
+      count = recv(sockfd, buffer, MAX_MSG_SIZE, 0);
+      if(count < 0){
+        pexit("Error recv: ");
+      }
+      got_ack = 1;
+    }
+  }
+  
+  //Receive info from server
   while(isRunning){
     count = recvfrom(sockfd, buffer, MAX_MSG_SIZE, 0, (struct sockaddr*)&serv_addr, &serv_addr_s);
     switch (buffer[0]) {
     case '1':
       if(!isInit){
         sscanf(buffer, "1 %d %d %c %d %d", &width, &height, &backg, &num_of_objects, &playerID);
+        if(backg == 'W'){
+          backg = ' ';
+        }
         initiate_field(width, height, backg, num_of_objects);
         set_num_obj(num_of_objects);
         myID = playerID;
@@ -91,11 +134,11 @@ void *server_talker_thread(void){
 
 void *graphics_thread(void){
   struct timespec frame_sleep;
-  frame_sleep.tv_sec = 0;
-  frame_sleep.tv_nsec = 1/10*pow(10,9);  
+  frame_sleep.tv_sec = 2;
+  frame_sleep.tv_nsec = 0;//1/10*pow(10,9);  
   while(myID == -1) nanosleep(&frame_sleep, NULL); //spin until field init.
   while(isRunning){
-    draw_screen();
+    //draw_screen();
     if(nanosleep(&frame_sleep, NULL) < 0){
       pexit("Error sleeping: ");
     }
@@ -108,19 +151,18 @@ int main(int argc, char *argv[])
 {
   myID = -1;
   isRunning = 1;
-  char address[20];
+  char *address = malloc(sizeof(char)*20);
   strcpy(address, argv[1]);
-  
   pthread_t graphics_t, server_talker_t, keyboard_t;
   int r_graphics_t, r_server_talker_t, r_keyboard_t;
   
   /* thread for server_talker */
-  r_server_talker_t = pthread_create( &server_talker_t, NULL, (void *) server_talker_thread, NULL);
+  r_server_talker_t = pthread_create( &server_talker_t, NULL, (void *) server_talker_thread, address);
   if(r_server_talker_t) {
     fprintf(stderr,"Error - pthread_create() return code: %d\n",r_server_talker_t);
     exit(EXIT_FAILURE);
   }
-
+  
   /* thread for graphics */
   r_graphics_t = pthread_create( &graphics_t, NULL, (void *) graphics_thread, NULL);
   if(r_graphics_t) {
@@ -130,5 +172,6 @@ int main(int argc, char *argv[])
   
   pthread_join(server_talker_t, NULL);
   pthread_join(graphics_t, NULL);
+  free(address);
   return 0;
 }

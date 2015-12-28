@@ -2,20 +2,20 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-struct client_object{
+struct ID_object{
   int objID;
   struct position *pos;
 };
 
 
 pthread_mutex_t obj_lock;
-static struct client_object *obj_list;
+static struct ID_object *obj_list;
 
 void set_num_obj(int num){
    if (pthread_mutex_init(&obj_lock, NULL) != 0){
      pexit("Mutex init failed: ");
    }
-   if ((obj_list = calloc(num ,sizeof(struct client_object))) == NULL){
+   if ((obj_list = calloc(num ,sizeof(struct ID_object))) == NULL){
      pexit("Callocing failed: ");
    }
    obj_list[0].objID = -1; //To enable checking for ID 0 in obj_exists

@@ -6,9 +6,13 @@
 
 #define MAX_APPLES 20
 #define MAX_LENGTH 10
-#define START_LENGTH 5
+#define START_LENGTH 1
 #define MAX_MSG_SIZE 512
 #define MAX_DESIGN_SIZE 2
+#define MAX_PLAYERS 2
+
+
+#define ACK_TO 3
 
 
 void pexit(char *error);
@@ -39,7 +43,12 @@ Order shouldn't be a problem since time is split into discrete moments of frames
 - Snake is moved by moving last object to second to last object's position and so on until first link object. First link object is moved one unit in the direction of players last input.
 
 CHEATING THE SYSTEM: Move the last link object to the front and keep the rest. will work. If apple is eaten, just add a new object in front instead.
- - Requires a sorted snake list in server. 
+ - Snakes for players are categorized by their objID.
+N = MAX_PLAYERS
+Player0 Snake: 0->MAX_LENGTH-1
+Player1 Snake: MAX_LENGTH->2*MAX_LENGTH-1.
+PlayerN Snake: MAX_LENGTH*N->MAX_LENGTH*(N+1)-1
+Apples: MAX_LENGTH(N+1)->maxInt? 
  */
 
 /*

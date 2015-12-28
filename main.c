@@ -15,6 +15,7 @@
 #include "defs.h"
 #include "network.h"
 #include "network_server.h"
+#include "obj_list.h"
 
 
 /**
@@ -38,12 +39,25 @@ void get_players(int sockfd, int num_of_players){
   char buffer[init_msg_len];
   ssize_t count;
   set_num_players(num_of_players);
+  
   for(int i = 0; i < num_of_players; i++){
     count = recvfrom(sockfd, buffer, init_msg_len, 0, (struct sockaddr*)&inc_player, &inc_player_s);
     if(count < 0){
       pexit("Recvfrom error: ");
     }else{
-      init_player(i, inc_player);
+      printf("test player %d exists %d\n",i,player_exists(inc_player));
+      if(!player_exists(inc_player)){
+        
+        printf("before puts\n");
+        puts(buffer);
+        printf("after puts\n");
+        init_player(i, inc_player);
+      }
+      strcpy(buffer, "!");
+      count = sendto(sockfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&inc_player, inc_player_s);
+      if(count < 0){
+        pexit("Sendto error: ");
+      }
     }
   }
 }
@@ -51,30 +65,63 @@ void get_players(int sockfd, int num_of_players){
 void distribute_field(int sockfd){
   int height = 20;
   int width = 20;
-  char backg = ' ';
+  char backg = '-';
   int num_of_objects = get_num_players()*MAX_LENGTH+MAX_APPLES;
-  char buffer[100];
+  char *buffer = malloc(100);
+  initiate_field(width, height, backg, num_of_objects);
+  set_num_obj(num_of_objects);
   sprintf(buffer, "1 %d %d %c %d", width, height, backg, num_of_objects);
   send_all(sockfd, buffer, 1);
-  ack_all(sockfd, buffer);
+  ack_all(sockfd, buffer, 1, 1, 0);
+  free(buffer);
   //Field is now distributed to all players. Doesn't deal with disconnected clients atm.
 }
 
 void distribute_start_objects(int sockfd){
   int num_players = get_num_players();
+  int objID, posx, posy, height, width;
+  struct ascii_object tmp_obj;
+  struct position *tmp_pos;
+  char *tmp_design = malloc(sizeof(MAX_DESIGN_SIZE));
+  strcpy(tmp_design, "*");
+  height = 1;
+  width = 1;
+  char *buffer = malloc(MAX_MSG_SIZE);
   for(int i = 0; i < num_players; i++){
+    objID = i*MAX_LENGTH;
+    posx = i;
+    posy = i;
+    tmp_obj.pos.x = posx;
+    tmp_obj.pos.y = posy;
+    tmp_obj.height = height;
+    tmp_obj.width = width;
+    tmp_obj.twoDimArray = tmp_design;
+    tmp_pos = add_object(tmp_obj);
+    set_obj(objID, tmp_pos);
+    sprintf(buffer, "2 %d %d %d %d %d %s", objID, posx, posy, height, width, tmp_design); 
+    //Can collect multiple object up to MAX_MSG_SIZE in one package.
+    send_all(sockfd, buffer, 0);
+    ack_all(sockfd, buffer, 0, 2, objID);
     //Create snek and bläst it out.
     //Need to keep track of the linked snake.
   }
+  free(tmp_design);
+  free(buffer);
 }
 
 int initiate_game(){
   int sockfd = init_socket(SOCK_DGRAM);
   bind_socket(sockfd, SERVER_PORT);
-  get_players(sockfd, 2);
+  get_players(sockfd, MAX_PLAYERS);
   distribute_field(sockfd);
-  distribute_start_objects(sockfd);
+  distribute_start_objects(sockfd); //Should discard all 1's.
   return sockfd;
+}
+
+void move_object(int sockfd, int objID, int posx, int posy){
+  char *buffer = malloc(MAX_MSG_SIZE);
+  sprintf(buffer, "3 %d %d %d", objID, posx, posy);
+  send_all(sockfd, buffer, 0);
 }
 
 int main(int argc, char *argv[])
@@ -98,7 +145,8 @@ int main(int argc, char *argv[])
   }
   if(pid){ //server
     int sockfd = initiate_game();
-    
+    //move_object(sockfd, 0, 5, 5);
+    puts("BEFORE WAIT");
     wait(NULL); //Wait for Client to terminate.
   }else{ //client
     static char *argvc[]={"client", address, NULL};
@@ -108,3 +156,6 @@ int main(int argc, char *argv[])
   return 0;
 }
     
+void game_loop(){
+  
+}
