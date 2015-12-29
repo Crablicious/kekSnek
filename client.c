@@ -29,9 +29,9 @@ Threads Client:
 3. Receives changes in object's pos from server.
  */
 
+const char VIABLE_INP[] = "wasdq";
 int isRunning;
 int myID;
-
 
 void *server_talker_thread(char *address){
   int sockfd = init_socket(SOCK_DGRAM);

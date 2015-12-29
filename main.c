@@ -34,7 +34,7 @@ Threads Server:
 2. Server sends out new positions of changed objects. Every X/seconds.
  */
 
-
+const char VIABLE_INP[] = "wasdq";
 
 void get_players(int sockfd, int num_of_players){
   struct sockaddr_in inc_player;

@@ -20,7 +20,7 @@
 #define SEC_READ_TO 0
 #define USEC_READ_TO 200000  
 
-char VIABLE_INP[] = "wasdq";
+extern const char VIABLE_INP[];
 
 void pexit(char *error);
 
