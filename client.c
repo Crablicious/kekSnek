@@ -148,7 +148,7 @@ void *graphics_thread(void){
   frame_sleep.tv_nsec = NSEC_FRAME;  
   while(myID == -1) nanosleep(&frame_sleep, NULL); //spin until field init.
   while(isRunning){
-    //draw_screen();
+    draw_screen();
     if(nanosleep(&frame_sleep, NULL) < 0){
       pexit("Error sleeping: ");
     }

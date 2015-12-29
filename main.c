@@ -126,24 +126,49 @@ void move_object(int sockfd, int objID, int posx, int posy){
   char *buffer = malloc(MAX_MSG_SIZE);
   sprintf(buffer, "3 %d %d %d", objID, posx, posy);
   send_all(sockfd, buffer, 0);
+  free(buffer);
 }
 
-/*
-void collect_char(int sockfd, char *buffer, char *latest_char, int sec, int nsec){
-  ssize_t count;
-  
-  count = read(sockfd, buffer, MAX_MSG_SIZE);
-  
-}*/
 
-void process_inputs(char *latest_char){
-  
+void process_inputs(int sockfd, char *latest_char){
+  //Just move all snakes.
+  int *posx, *posy;
+  posx = malloc(sizeof(int));
+  posy = malloc(sizeof(int));
+  for(int i = 0; latest_char[i] != '\0'; i++){
+    if(latest_char[i] != 0){
+      switch (latest_char[i]) {
+      case 'w':
+        get_pos(MAX_LENGTH*i, posx, posy);
+        set_pos(MAX_LENGTH*i, *posx, (*posy)-1);
+        break;
+      case 'a':
+        get_pos(MAX_LENGTH*i, posx, posy);
+        set_pos(MAX_LENGTH*i, (*posx)-1, *posy);
+        break;
+      case 's':
+        get_pos(MAX_LENGTH*i, posx, posy);
+        set_pos(MAX_LENGTH*i, *posx, (*posy)+1);
+        break;
+      case 'd':
+        get_pos(MAX_LENGTH*i, posx, posy);
+        set_pos(MAX_LENGTH*i, (*posx)+1, *posy);
+        break;
+      default:
+        break;
+      }
+      get_pos(MAX_LENGTH*i, posx, posy);
+      move_object(sockfd, MAX_LENGTH*i, *posx, *posy);
+    }
+  }
+  free(posx);
+  free(posy);
 }
 
 void game_loop(int sockfd){
   char *buffer = malloc(MAX_MSG_SIZE);
   int isRunning = 1;
-  char *latest_char = calloc(MAX_PLAYERS, sizeof(char));
+  char *latest_char = calloc(MAX_PLAYERS+1, sizeof(char));
   ssize_t count;
   
   int selectVal, tmp_ID;
@@ -185,9 +210,9 @@ void game_loop(int sockfd){
     }
     clock_gettime(CLOCK_REALTIME, &curr_time);
     if((curr_time.tv_sec > end_time.tv_sec) || ((curr_time.tv_sec == end_time.tv_sec) && (curr_time.tv_nsec >= end_time.tv_nsec))){
-      //process_inputs();
-      printf("0 CHARACTER IS: %c\n",latest_char[0]);
-      printf("1 CHARACTER IS: %c\n",latest_char[1]);
+      process_inputs(sockfd, latest_char);
+      /*printf("0 CHARACTER IS: %c\n",latest_char[0]);
+      printf("1 CHARACTER IS: %c\n",latest_char[1]);*/
       if(latest_char[0] == 'q'){
         isRunning = 0;
       }
