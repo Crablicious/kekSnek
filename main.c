@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
   static char address[20];
   if(argc == 2 && strcmp(argv[1], "1") == 0){
     is_server = 1;
-    strcpy(address, "127.0.0.1");
+    strcpy(address, "192.168.56.1");
   }else if(argc == 2){
     strcpy(address, argv[1]);
   }else{

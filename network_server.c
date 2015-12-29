@@ -58,7 +58,7 @@ void send_all(int sockfd, char *msg, int catID){
       sprintf(appBuf, " %d", i);
       strcat(tmp_buf, appBuf);
     }
-    count = sendto(sockfd, msg, strlen(msg)+1, 0, (struct sockaddr*)&players[i], sizeof(struct sockaddr_in));
+    count = sendto(sockfd, tmp_buf, strlen(tmp_buf)+1, 0, (struct sockaddr*)&players[i], sizeof(struct sockaddr_in));
     if(count < 0){
       pexit("Error sending sendall: ");
     }

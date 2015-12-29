@@ -177,7 +177,7 @@ void *keyboard_thread(char *address){
     while(!kbhit());
     c = readch();
     if(strchr(VIABLE_INP, c)){
-      printf("%d Key read: %c\n" ,myID,c);
+      //printf("%d Key read: %c\n" ,myID,c);
       sprintf(buffer, "%c %d", c, myID);
       count = sendto(sockfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serv_addr, serv_addr_s);
       if(count < 0){
