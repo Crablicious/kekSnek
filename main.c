@@ -49,14 +49,18 @@ void get_players(int sockfd, int num_of_players){
     if(count < 0){
       pexit("Recvfrom error: ");
     }else{
-      if(!player_exists(inc_player)){
-        puts(buffer);
-        init_player(i, inc_player);
-      }
-      strcpy(buffer, "!");
-      count = sendto(sockfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&inc_player, inc_player_s);
-      if(count < 0){
-        pexit("Sendto error: ");
+      if(buffer[0] == '!'){
+        if(!player_exists(inc_player)){
+          puts(buffer);
+          init_player(i, inc_player);
+        }
+        strcpy(buffer, "!");
+        count = sendto(sockfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&inc_player, inc_player_s);
+        if(count < 0){
+          pexit("Sendto error: ");
+        }
+      }else{
+        i--;
       }
     }
   }
@@ -132,7 +136,9 @@ void collect_char(int sockfd, char *buffer, char *latest_char, int sec, int nsec
   
 }*/
 
-
+void process_inputs(char *latest_char){
+  
+}
 
 void game_loop(int sockfd){
   char *buffer = malloc(MAX_MSG_SIZE);
@@ -151,12 +157,14 @@ void game_loop(int sockfd){
   
   struct timespec end_time;
   struct timespec curr_time;
+  int just_sent = 1;
   while(isRunning){
-    puts("in game loop");
-    clock_gettime(CLOCK_REALTIME, &end_time);
-    end_time.tv_sec += sec;
-    end_time.tv_nsec += nsec;
-    
+    if(just_sent){
+      clock_gettime(CLOCK_REALTIME, &end_time);
+      end_time.tv_sec += sec;
+      end_time.tv_nsec += nsec;
+      just_sent = 0;
+    }
     timeout.tv_sec = SEC_READ_TO;
     timeout.tv_usec = USEC_READ_TO;  
     FD_ZERO(&fds);
@@ -171,15 +179,22 @@ void game_loop(int sockfd){
         pexit("error recv game_loop");
       }
       sscanf(buffer, "%c %d", &tmp_c, &tmp_ID);
-      latest_char[tmp_ID] = tmp_c;
+      if(strchr(VIABLE_INP, tmp_c)){
+        latest_char[tmp_ID] = tmp_c;
+      }
     }
     clock_gettime(CLOCK_REALTIME, &curr_time);
-    if((curr_time.tv_sec > end_time.tv_sec) || (curr_time.tv_sec == end_time.tv_sec && curr_time.tv_nsec >= end_time.tv_nsec)){
+    if((curr_time.tv_sec > end_time.tv_sec) || ((curr_time.tv_sec == end_time.tv_sec) && (curr_time.tv_nsec >= end_time.tv_nsec))){
       //process_inputs();
-      printf("CHARACTER IS: %c\n",latest_char[0]);
-      isRunning = 0;
+      printf("0 CHARACTER IS: %c\n",latest_char[0]);
+      printf("1 CHARACTER IS: %c\n",latest_char[1]);
+      if(latest_char[0] == 'q'){
+        isRunning = 0;
+      }
+      just_sent = 1;
     }
   }
+  free(latest_char);
 }
 
 int main(int argc, char *argv[])

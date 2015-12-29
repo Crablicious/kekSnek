@@ -158,7 +158,7 @@ void *graphics_thread(void){
 
 void *keyboard_thread(char *address){
   int c, sockfd = init_socket(SOCK_DGRAM);
-  ssize_t count;
+  ssize_t count = 1;
   char *buffer = malloc(2);
   struct sockaddr_in serv_addr;
   socklen_t serv_addr_s;
@@ -176,7 +176,8 @@ void *keyboard_thread(char *address){
     
     while(!kbhit());
     c = readch();
-    if(c){
+    if(strchr(VIABLE_INP, c)){
+      printf("%d Key read: %c\n" ,myID,c);
       sprintf(buffer, "%c %d", c, myID);
       count = sendto(sockfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serv_addr, serv_addr_s);
       if(count < 0){
@@ -223,10 +224,13 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Error - pthread_create() return code: %d\n",r_keyboard_t);
     exit(EXIT_FAILURE);
   }
-  
+  puts("bef joining");
   pthread_join(server_talker_t, NULL);
+  puts("joining");
   pthread_join(graphics_t, NULL);
+  puts("joining");
   pthread_join(keyboard_t, NULL);
+  puts("joining");
   free(address);
   return 0;
 }
