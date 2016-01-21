@@ -39,6 +39,15 @@ int get_first_ID(int playerID){
   return snake_lists[playerID]->objID;
 }
 
+int get_second_ID(int playerID){
+  if(snake_lists[playerID] && snake_lists[playerID]->next_link){
+    return (snake_lists[playerID]->next_link)->objID;
+  }else{
+    return -1;
+  }
+}
+
+
 void free_snake_list(){
   for(int i = 0; i < MAX_PLAYERS; i++){
     struct linked_list *next = snake_lists[i];

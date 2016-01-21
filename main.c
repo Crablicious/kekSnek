@@ -166,36 +166,61 @@ void process_inputs(int sockfd, char *latest_char){
   int headID;
   int appendFlag = 0;
   char *buffer = malloc(MAX_MSG_SIZE);
+  int num_players = get_num_players();
   posx = malloc(sizeof(int));
   posy = malloc(sizeof(int));
-  for(int i = 0; latest_char[i] != '\0'; i++){
+  for(int i = 0; i < num_players; i++){
     if(latest_char[i] != 0){
       switch (latest_char[i]) {
       case 'w':
-        y_offset = -1;
-        x_offset = 0;
+        if(latest_char[num_players+i] != 's'){
+          y_offset = -1;
+          x_offset = 0;
+          latest_char[num_players+i] = 'w';
+        }else{
+          y_offset = 1;
+          x_offset = 0;
+        }
         break;
       case 'a':
-        y_offset = 0;
-        x_offset = -1;
+        if(latest_char[num_players+i] != 'd'){
+          y_offset = 0;
+          x_offset = -1;
+          latest_char[num_players+i] = 'a';
+        }else{
+          y_offset = 0;
+          x_offset = 1;
+        }
         break;
       case 's':
-        y_offset = 1;
-        x_offset = 0;
+        if(latest_char[num_players+i] != 'w'){
+          y_offset = 1;
+          x_offset = 0;
+          latest_char[num_players+i] = 's';
+        }else{
+          y_offset = -1;
+          x_offset = 0;
+        }
         break;
       case 'd':        
-        y_offset = 0;
-        x_offset = 1;
+        if(latest_char[num_players+i] != 'a'){
+          y_offset = 0;
+          x_offset = 1;
+          latest_char[num_players+i] = 'd';
+        }else{
+          y_offset = 0;
+          x_offset = -1;
+        }
         break;
       default:
         break;
       }
       headID = get_first_ID(i);
       get_pos(headID, posx, posy);
-      if((*posx == 2) && (*posy == 2)){
+      if((*posx == 2) && (*posy == 2)){ //TODO: implement apples instead
         appendFlag = 1;
       }
-      if(appendFlag && (get_highest_ID(i)+1 < get_num_players()*i+MAX_LENGTH)){
+      if(appendFlag && (get_highest_ID(i)+1 < num_players*i+MAX_LENGTH)){
         struct position *pos = create_object("*", (*posx)+x_offset, *posy+y_offset);
         headID = get_highest_ID(i)+1;
         set_obj(headID, pos);
@@ -221,7 +246,7 @@ void process_inputs(int sockfd, char *latest_char){
 void game_loop(int sockfd){
   char *buffer = malloc(MAX_MSG_SIZE);
   int isRunning = 1;
-  char *latest_char = calloc(get_num_players()+1, sizeof(char));
+  char *latest_char = calloc(get_num_players()*2+1, sizeof(char));
   ssize_t count;
   
   int selectVal, tmp_ID;

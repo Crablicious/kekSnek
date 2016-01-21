@@ -11,6 +11,9 @@ void append_first(int playerID, int objID);
 //Position of first object
 int get_first_ID(int playerID);
 
+//Returns -1 if NULL
+int get_second_ID(int playerID);
+
 //Free all the lists.
 void free_snake_list();
 
