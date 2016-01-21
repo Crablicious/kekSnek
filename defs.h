@@ -11,8 +11,8 @@
 #define MAX_DESIGN_SIZE 2
 #define MAX_PLAYERS 1
 
-#define SEC_FRAME 2
-#define NSEC_FRAME 0
+#define SEC_FRAME 1
+#define NSEC_FRAME 0//75000000
 
 #define ACK_TO 3
 #define SERV_TALK_TO 5

@@ -56,8 +56,7 @@ void *server_talker_thread(char *address){
   fd_set fds;
   strcpy(buffer, "!");
   int got_ack = 0;
-  //Get into game TODO: MAKE THIS SAFE
-  while(!got_ack){ 
+  while(!got_ack && isRunning){ 
     count = sendto(sockfd, buffer, strlen(buffer)+1, 0, (struct sockaddr *)&serv_addr, serv_addr_s);
     if(count < 0){
       pexit("Error sendto ACK: ");
@@ -146,7 +145,7 @@ void *graphics_thread(void){
   struct timespec frame_sleep;
   frame_sleep.tv_sec = SEC_FRAME;
   frame_sleep.tv_nsec = NSEC_FRAME;  
-  while(myID == -1) nanosleep(&frame_sleep, NULL); //spin until field init.
+  while(myID == -1 && isRunning) nanosleep(&frame_sleep, NULL); //spin until field init.
   while(isRunning){
     draw_screen();
     if(nanosleep(&frame_sleep, NULL) < 0){
@@ -167,7 +166,7 @@ void *keyboard_thread(char *address){
   inet_aton(address, &serv_addr.sin_addr);
   serv_addr_s = sizeof(struct sockaddr_in);
   
-  struct timespec samp_rate;  sleep(10);
+  struct timespec samp_rate;  //sleep(10);
 
   samp_rate.tv_sec = SEC_FRAME/4;
   samp_rate.tv_nsec = NSEC_FRAME/4;  

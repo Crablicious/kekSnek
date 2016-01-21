@@ -20,6 +20,7 @@
 #include "network.h"
 #include "network_server.h"
 #include "obj_list.h"
+#include "snake_list.h"
 
 
 /**
@@ -81,10 +82,21 @@ void distribute_field(int sockfd){
   //Field is now distributed to all players. Doesn't deal with disconnected clients atm.
 }
 
+
+struct position *create_object(char *design, int posx, int posy){
+  struct ascii_object tmp_obj;
+  tmp_obj.pos.x = posx;
+  tmp_obj.pos.y = posy;
+  tmp_obj.height = 1;
+  tmp_obj.width = 1;
+  tmp_obj.twoDimArray = design;
+  return add_object(tmp_obj);
+}
+
+
 void distribute_start_objects(int sockfd){
   int num_players = get_num_players();
   int objID, posx, posy, height, width;
-  struct ascii_object tmp_obj;
   struct position *tmp_pos;
   char *tmp_design = malloc(sizeof(MAX_DESIGN_SIZE));
   strcpy(tmp_design, "*");
@@ -95,30 +107,28 @@ void distribute_start_objects(int sockfd){
     objID = i*MAX_LENGTH;
     posx = i;
     posy = i;
-    tmp_obj.pos.x = posx;
-    tmp_obj.pos.y = posy;
-    tmp_obj.height = height;
-    tmp_obj.width = width;
-    tmp_obj.twoDimArray = tmp_design;
-    tmp_pos = add_object(tmp_obj);
+    tmp_pos = create_object(tmp_design, posx, posy);
     set_obj(objID, tmp_pos);
+    append_first(i, objID);
     sprintf(buffer, "2 %d %d %d %d %d %s", objID, posx, posy, height, width, tmp_design); 
     //Can collect multiple object up to MAX_MSG_SIZE in one package.
     send_all(sockfd, buffer, 0);
     ack_all(sockfd, buffer, 0, 2, objID);
     //Create snek and bläst it out.
-    //Need to keep track of the linked snake.
   }
   free(tmp_design);
   free(buffer);
 }
 
-int initiate_game(){
+int initiate_game(){ //Error  here somewhere
   int sockfd = init_socket(SOCK_DGRAM);
   bind_socket(sockfd, SERVER_PORT);
+  printf("before get_players\n");
   get_players(sockfd, MAX_PLAYERS);
+  printf("Before distribute field\n");
   distribute_field(sockfd);
   distribute_start_objects(sockfd); //Should discard all 1's.
+  printf("After distribute field\n");
   return sockfd;
 }
 
@@ -130,35 +140,78 @@ void move_object(int sockfd, int objID, int posx, int posy){
 }
 
 
+/*
+Linked snake list.
+Info required:
+- objID
+- *pos
+- *nextLink
+
+
+Check if head is in apple.
+ - If so, create new piece as head in new position.
+ - Else, move back object to the front.
+
+Creating obj req:
+- Highest ID
+- position 
+- height = 1
+- width = 1
+- design = '*'
+ */
+
 void process_inputs(int sockfd, char *latest_char){
-  //Just move all snakes.
   int *posx, *posy;
+  int x_offset = 0, y_offset = 0;
+  int headID;
+  int appendFlag = 0;
+  char *buffer = malloc(MAX_MSG_SIZE);
   posx = malloc(sizeof(int));
   posy = malloc(sizeof(int));
   for(int i = 0; latest_char[i] != '\0'; i++){
     if(latest_char[i] != 0){
       switch (latest_char[i]) {
       case 'w':
-        get_pos(MAX_LENGTH*i, posx, posy);
-        set_pos(MAX_LENGTH*i, *posx, (*posy)-1);
+        y_offset = -1;
+        x_offset = 0;
         break;
       case 'a':
-        get_pos(MAX_LENGTH*i, posx, posy);
-        set_pos(MAX_LENGTH*i, (*posx)-1, *posy);
+        y_offset = 0;
+        x_offset = -1;
         break;
       case 's':
-        get_pos(MAX_LENGTH*i, posx, posy);
-        set_pos(MAX_LENGTH*i, *posx, (*posy)+1);
+        y_offset = 1;
+        x_offset = 0;
         break;
-      case 'd':
-        get_pos(MAX_LENGTH*i, posx, posy);
-        set_pos(MAX_LENGTH*i, (*posx)+1, *posy);
+      case 'd':        
+        y_offset = 0;
+        x_offset = 1;
         break;
       default:
         break;
       }
-      get_pos(MAX_LENGTH*i, posx, posy);
-      move_object(sockfd, MAX_LENGTH*i, *posx, *posy);
+      headID = get_first_ID(i);
+      get_pos(headID, posx, posy);
+      if((*posx == 2) && (*posy == 2)){
+        appendFlag = 1;
+      }
+      if(appendFlag && (get_highest_ID(i)+1 < get_num_players()*i+MAX_LENGTH)){
+        struct position *pos = create_object("*", (*posx)+x_offset, *posy+y_offset);
+        headID = get_highest_ID(i)+1;
+        set_obj(headID, pos);
+        append_first(i, headID);
+        appendFlag = 0;
+        //send the new object to client.
+        sprintf(buffer, "2 %d %d %d %d %d %s", headID, (*posx)+x_offset, (*posy)+y_offset, 1, 1, "*"); 
+        //Can collect multiple object up to MAX_MSG_SIZE in one package.
+        send_all(sockfd, buffer, 0);
+        ack_all(sockfd, buffer, 0, 2, headID);
+      }else{
+        move_last_first(i);
+        headID = get_first_ID(i);
+        set_pos(headID, *posx+x_offset, (*posy)+y_offset);
+      }
+      move_object(sockfd, headID, *posx+x_offset, *posy+y_offset);
     }
   }
   free(posx);
@@ -168,7 +221,7 @@ void process_inputs(int sockfd, char *latest_char){
 void game_loop(int sockfd){
   char *buffer = malloc(MAX_MSG_SIZE);
   int isRunning = 1;
-  char *latest_char = calloc(MAX_PLAYERS+1, sizeof(char));
+  char *latest_char = calloc(get_num_players()+1, sizeof(char));
   ssize_t count;
   
   int selectVal, tmp_ID;
@@ -211,6 +264,8 @@ void game_loop(int sockfd){
     clock_gettime(CLOCK_REALTIME, &curr_time);
     if((curr_time.tv_sec > end_time.tv_sec) || ((curr_time.tv_sec == end_time.tv_sec) && (curr_time.tv_nsec >= end_time.tv_nsec))){
       process_inputs(sockfd, latest_char);
+      
+
       /*printf("0 CHARACTER IS: %c\n",latest_char[0]);
       printf("1 CHARACTER IS: %c\n",latest_char[1]);*/
       if(latest_char[0] == 'q'){
@@ -229,7 +284,7 @@ int main(int argc, char *argv[])
   static char address[20];
   if(argc == 2 && strcmp(argv[1], "1") == 0){
     is_server = 1;
-    strcpy(address, "192.168.56.1");
+    strcpy(address, "127.0.0.1");
   }else if(argc == 2){
     strcpy(address, argv[1]);
   }else{
@@ -243,6 +298,7 @@ int main(int argc, char *argv[])
   }
   if(pid){ //server
     int sockfd = initiate_game();
+    printf("Server: initiation finished! \n");
     game_loop(sockfd);
     
     wait(NULL); //Wait for Client to terminate.
