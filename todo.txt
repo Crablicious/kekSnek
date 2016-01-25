@@ -7,4 +7,4 @@
 
 * Snake collision
 
-* Send all snake objects at start of game. Hide outside screen.
+* Send exit status to all clients when game is finished.

@@ -9,7 +9,7 @@
 #define START_LENGTH 1
 #define MAX_MSG_SIZE 512
 #define MAX_DESIGN_SIZE 2
-#define MAX_PLAYERS 2
+#define MAX_PLAYERS 1
 
 #define SEC_FRAME 0
 #define NSEC_FRAME 75000000
@@ -22,6 +22,10 @@
 
 #define FIELD_HEIGHT 20
 #define FIELD_WIDTH 20
+
+//Number of frames
+#define APPLE_SPAWN 20
+#define APPLE_DESPAWN 30
 
 extern const char VIABLE_INP[];
 
@@ -39,7 +43,7 @@ Communication protocol:
  */
 
 //All objects have a uniform ID in all clients.  
-//New objects have to be able to be added while playing. 
+//New objects have to be able to be added while playing. NO, everything is sent at the start.
 
 /*
 Loop around screen? Yes, can be fixed in server.

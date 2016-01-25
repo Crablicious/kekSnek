@@ -96,26 +96,52 @@ struct position *create_object(char *design, int posx, int posy){
 
 void distribute_start_objects(int sockfd){
   int num_players = get_num_players();
-  int objID, posx, posy, height, width;
+  int objID, apple_id, posx, posy, height, width;
   struct position *tmp_pos;
   char *tmp_design = malloc(sizeof(MAX_DESIGN_SIZE));
+  char *tmp_design_apple = malloc(sizeof(MAX_DESIGN_SIZE));
   strcpy(tmp_design, "*");
+  strcpy(tmp_design_apple, "&");
   height = 1;
   width = 1;
   char *buffer = malloc(MAX_MSG_SIZE);
-  for(int i = 0; i < num_players; i++){
-    objID = i*MAX_LENGTH;
-    posx = i;
-    posy = i;
-    tmp_pos = create_object(tmp_design, posx, posy);
-    set_obj(objID, tmp_pos);
-    append_first(i, objID);
-    sprintf(buffer, "2 %d %d %d %d %d %s", objID, posx, posy, height, width, tmp_design); 
-    //Can collect multiple object up to MAX_MSG_SIZE in one package.
-    send_all(sockfd, buffer, 0);
-    ack_all(sockfd, buffer, 0, 2, objID);
-    //Create snek and bläst it out.
+  for(int i = 0; i < num_players; i++){ 
+    for(int j = 0; j < MAX_LENGTH; j++){ //Send all snake links.
+      objID = i*MAX_LENGTH+j;
+      if(j){
+        posx = -1; //Make snake object hidden
+        posy = -1;
+      }else{
+        posx = i;
+        posy = i;
+      }
+      tmp_pos = create_object(tmp_design, posx, posy);
+      set_obj(objID, tmp_pos);
+      if(!j){
+        append_first(i, objID);
+      }
+      sprintf(buffer, "2 %d %d %d %d %d %s", objID, posx, posy, height, width, tmp_design); 
+      //Can collect multiple object up to MAX_MSG_SIZE in one package.
+      send_all(sockfd, buffer, 0); //TODO: Collect all these together.
+      ack_all(sockfd, buffer, 0, 2, objID);
+      //Create snek and bläst it out.
+    }
   }
+  //Send all apples.
+  posx = -1;
+  posy = -1;
+    
+  for(int i = 0; i < MAX_APPLES; i++){
+    apple_id = MAX_LENGTH*num_players+i;
+    tmp_pos = create_object(tmp_design_apple, posx, posy); 
+    set_obj(apple_id, tmp_pos); 
+
+    sprintf(buffer, "2 %d %d %d %d %d %s", apple_id, posx, posy, height, width, tmp_design_apple);  
+    send_all(sockfd, buffer, 0); //TODO: Collect all these together. 
+    ack_all(sockfd, buffer, 0, 2, apple_id); 
+  }
+  
+  free(tmp_design_apple);
   free(tmp_design);
   free(buffer);
 }
@@ -127,8 +153,9 @@ int initiate_game(){ //Error  here somewhere
   get_players(sockfd, MAX_PLAYERS);
   printf("Before distribute field\n");
   distribute_field(sockfd);
-  distribute_start_objects(sockfd); //Should discard all 1's.
   printf("After distribute field\n");
+  distribute_start_objects(sockfd); //Should discard all 1's.
+  printf("after distr objects");
   return sockfd;
 }
 
@@ -234,26 +261,29 @@ void process_inputs(int sockfd, char *latest_char){
       
 
       if(appendFlag && (get_highest_ID(i)+1 < num_players*i+MAX_LENGTH)){
-        struct position *pos = create_object("*", (*posx)+x_offset, *posy+y_offset);
         headID = get_highest_ID(i)+1;
-        set_obj(headID, pos);
         append_first(i, headID);
         appendFlag = 0;
-        //send the new object to client.
-        sprintf(buffer, "2 %d %d %d %d %d %s", headID, (*posx)+x_offset, (*posy)+y_offset, 1, 1, "*"); 
-        //Can collect multiple object up to MAX_MSG_SIZE in one package.
-        send_all(sockfd, buffer, 0);
-        ack_all(sockfd, buffer, 0, 2, headID);
       }else{
         move_last_first(i);
         headID = get_first_ID(i);
-        set_pos(headID, *posx+x_offset, (*posy)+y_offset);
       }
-      move_object(sockfd, headID, *posx+x_offset, *posy+y_offset);
-    }
+      set_pos(headID, *posx+x_offset, (*posy)+y_offset);
+      move_object(sockfd, headID, (*posx)+x_offset, (*posy)+y_offset);
+    } //TODO: Collect all moveobjects for all players and send to client. Needs  to be implemented in client too.
   }
   free(posx);
   free(posy);
+}
+
+//Returns ID of first apple not already spawned.
+int next_apple_spawn(int *apple_decay){
+  for(int i = 0; i < MAX_APPLES; i++){
+    if(apple_decay[i] == 0){
+      return i;
+    }
+  }
+  return -1;
 }
 
 void game_loop(int sockfd){
@@ -262,7 +292,11 @@ void game_loop(int sockfd){
   char *latest_char = calloc(get_num_players()*2+1, sizeof(char));
   ssize_t count;
   
-  int selectVal, tmp_ID;
+  int selectVal, tmp_ID, posx, posy, apple_id, apple_tick = APPLE_SPAWN;
+  
+  int apple_decay[MAX_APPLES]; //Currently unused apples are 0
+  memset(apple_decay, 0, sizeof(int)*MAX_APPLES);
+
   char tmp_c;
   struct timeval timeout;
   fd_set fds;
@@ -273,6 +307,10 @@ void game_loop(int sockfd){
   
   struct timespec end_time;
   struct timespec curr_time;
+
+  clock_gettime(CLOCK_REALTIME, &end_time);
+  srand(end_time.tv_nsec); //seed
+
   int just_sent = 1;
   while(isRunning){
     if(just_sent){
@@ -300,16 +338,42 @@ void game_loop(int sockfd){
       }
     }
     clock_gettime(CLOCK_REALTIME, &curr_time);
+    //frames.
     if((curr_time.tv_sec > end_time.tv_sec) || ((curr_time.tv_sec == end_time.tv_sec) && (curr_time.tv_nsec >= end_time.tv_nsec))){
       process_inputs(sockfd, latest_char);
-      
+      //Spawn apple
+      if(apple_tick > APPLE_SPAWN){
+        apple_tick = 0;
+        apple_id = next_apple_spawn(apple_decay);
+        apple_decay[apple_id] = 1;
+        apple_id += MAX_LENGTH*(MAX_PLAYERS);
+        posx = rand() % FIELD_WIDTH;
+        posy = rand() % FIELD_HEIGHT;
+        move_object(sockfd, apple_id, posx, posy);
+      }
+      //TODO: calculate collisions. snake->snake, snake->apple
 
-      /*printf("0 CHARACTER IS: %c\n",latest_char[0]);
-      printf("1 CHARACTER IS: %c\n",latest_char[1]);*/
+      //Despawn apple
+      for(int i = 0; i < MAX_APPLES; i++){
+        if(apple_decay[i] > APPLE_DESPAWN){
+          apple_id = i+MAX_LENGTH*(MAX_PLAYERS);
+          move_object(sockfd, apple_id, -1, -1); //Move OOB
+          apple_decay[i] = 0;
+        }
+      }
+
+
       if(latest_char[0] == 'q'){
         isRunning = 0;
       }
       just_sent = 1;
+      apple_tick++;
+      for(int i = 0; i < MAX_APPLES; i++){
+        if(apple_decay[i]){
+          apple_decay[i]++;
+        }
+      }
+
     }
   }
   free(latest_char);

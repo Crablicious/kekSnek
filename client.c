@@ -111,6 +111,7 @@ void *server_talker_thread(char *address){
         break;
       case '2':
         sscanf(buffer, "2 %d %d %d %d %d %s", &objID, &posx, &posy, &height, &width, designbuffer);
+        
         if(!obj_exists(objID)){
 
           tmp_obj.pos.x = posx;
