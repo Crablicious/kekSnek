@@ -1,0 +1,10 @@
+----------------TODO----------------
+* Introduce apples that can be eaten to gain length 
+- Random location
+- Spawn with locked interval
+- Despawn with locked interval, shorter than spawn interval
+- Send all apple objects at start of game. Hide outside screen.
+
+* Snake collision
+
+* Send all snake objects at start of game. Hide outside screen.

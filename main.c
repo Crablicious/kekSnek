@@ -68,8 +68,8 @@ void get_players(int sockfd, int num_of_players){
 }
 
 void distribute_field(int sockfd){
-  int height = 20;
-  int width = 20;
+  int height = FIELD_HEIGHT;
+  int width = FIELD_WIDTH;
   char backg = '-';
   int num_of_objects = get_num_players()*MAX_LENGTH+MAX_APPLES;
   char *buffer = malloc(100);
@@ -220,6 +220,19 @@ void process_inputs(int sockfd, char *latest_char){
       if((*posx == 2) && (*posy == 2)){ //TODO: implement apples instead
         appendFlag = 1;
       }
+      //Check if OOB
+      if(*posx+x_offset == -1){
+        x_offset = FIELD_WIDTH-1;
+      }else if(*posx+x_offset == FIELD_WIDTH){
+        x_offset = -(FIELD_WIDTH-1);
+      }
+      if(*posy+y_offset == -1){
+        y_offset = FIELD_HEIGHT-1;
+      }else if(*posy+y_offset == FIELD_HEIGHT){
+        y_offset = -(FIELD_HEIGHT-1);
+      }  
+      
+
       if(appendFlag && (get_highest_ID(i)+1 < num_players*i+MAX_LENGTH)){
         struct position *pos = create_object("*", (*posx)+x_offset, *posy+y_offset);
         headID = get_highest_ID(i)+1;
