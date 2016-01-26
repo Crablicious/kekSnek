@@ -9,7 +9,7 @@
 #define START_LENGTH 1
 #define MAX_MSG_SIZE 512
 #define MAX_DESIGN_SIZE 2
-#define MAX_PLAYERS 1
+#define MAX_PLAYERS 2
 
 #define SEC_FRAME 0
 #define NSEC_FRAME 75000000
@@ -58,7 +58,7 @@ Order shouldn't be a problem since time is split into discrete moments of frames
 
 CHEATING THE SYSTEM: Move the last link object to the front and keep the rest. will work. If apple is eaten, just add a new object in front instead.
  - Snakes for players are categorized by their objID.
-N = MAX_PLAYERS
+N+1 = MAX_PLAYERS
 Player0 Snake: 0->MAX_LENGTH-1
 Player1 Snake: MAX_LENGTH->2*MAX_LENGTH-1.
 PlayerN Snake: MAX_LENGTH*N->MAX_LENGTH*(N+1)-1

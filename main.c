@@ -36,6 +36,7 @@ Threads Server:
  */
 
 const char VIABLE_INP[] = "wasdq";
+static int append_flag[MAX_PLAYERS];
 
 void get_players(int sockfd, int num_of_players){
   struct sockaddr_in inc_player;
@@ -191,7 +192,6 @@ void process_inputs(int sockfd, char *latest_char){
   int *posx, *posy;
   int x_offset = 0, y_offset = 0;
   int headID;
-  int appendFlag = 0;
   char *buffer = malloc(MAX_MSG_SIZE);
   int num_players = get_num_players();
   posx = malloc(sizeof(int));
@@ -244,9 +244,9 @@ void process_inputs(int sockfd, char *latest_char){
       }
       headID = get_first_ID(i);
       get_pos(headID, posx, posy);
-      if((*posx == 2) && (*posy == 2)){ //TODO: implement apples instead
+      /*if((*posx == 2) && (*posy == 2)){ //TODO: implement apples instead
         appendFlag = 1;
-      }
+        }*/
       //Check if OOB
       if(*posx+x_offset == -1){
         x_offset = FIELD_WIDTH-1;
@@ -260,10 +260,10 @@ void process_inputs(int sockfd, char *latest_char){
       }  
       
 
-      if(appendFlag && (get_highest_ID(i)+1 < num_players*i+MAX_LENGTH)){
+      if(append_flag[i] && (get_highest_ID(i)+1 < num_players*i+MAX_LENGTH)){
         headID = get_highest_ID(i)+1;
         append_first(i, headID);
-        appendFlag = 0;
+        append_flag[i] = 0;
       }else{
         move_last_first(i);
         headID = get_first_ID(i);
@@ -350,18 +350,43 @@ void game_loop(int sockfd){
         posx = rand() % FIELD_WIDTH;
         posy = rand() % FIELD_HEIGHT;
         move_object(sockfd, apple_id, posx, posy);
+        set_pos(apple_id, posx, posy);
       }
       //TODO: calculate collisions. snake->snake, snake->apple
-
+      //Do snake snake collision
+      
+      //Do snake apple collision
+      int *hposx = malloc(sizeof(int));
+      int *hposy = malloc(sizeof(int));
+      int *aposx = malloc(sizeof(int));
+      int *aposy = malloc(sizeof(int));
+      int head_id;
+      for(int i = 0; i < MAX_PLAYERS; i++){
+        head_id = get_first_ID(i);
+        get_pos(head_id, hposx, hposy);
+        for(int j = 0; j < MAX_APPLES; j++){
+          int curr_apple = MAX_LENGTH*MAX_PLAYERS+j;
+          get_pos(curr_apple, aposx, aposy);
+          if((*aposx == *hposx) && (*aposy == *hposy)){
+            append_flag[i] = 1;
+            apple_decay[j] = APPLE_DESPAWN+1;
+          }
+        }
+      }
+      free(hposx);
+      free(hposy);
+      free(aposy);
+      free(aposx);
+      
       //Despawn apple
       for(int i = 0; i < MAX_APPLES; i++){
         if(apple_decay[i] > APPLE_DESPAWN){
           apple_id = i+MAX_LENGTH*(MAX_PLAYERS);
           move_object(sockfd, apple_id, -1, -1); //Move OOB
+          set_pos(apple_id, -1, -1);
           apple_decay[i] = 0;
         }
       }
-
 
       if(latest_char[0] == 'q'){
         isRunning = 0;
