@@ -259,8 +259,7 @@ void process_inputs(int sockfd, char *latest_char){
         y_offset = -(FIELD_HEIGHT-1);
       }  
       
-
-      if(append_flag[i] && (get_highest_ID(i)+1 < num_players*i+MAX_LENGTH)){
+      if(append_flag[i] && (get_highest_ID(i)+1 < (i+1)*MAX_LENGTH)){
         headID = get_highest_ID(i)+1;
         append_first(i, headID);
         append_flag[i] = 0;
@@ -272,6 +271,7 @@ void process_inputs(int sockfd, char *latest_char){
       move_object(sockfd, headID, (*posx)+x_offset, (*posy)+y_offset);
     } //TODO: Collect all moveobjects for all players and send to client. Needs  to be implemented in client too.
   }
+  
   free(posx);
   free(posy);
 }
@@ -310,6 +310,12 @@ void game_loop(int sockfd){
 
   clock_gettime(CLOCK_REALTIME, &end_time);
   srand(end_time.tv_nsec); //seed
+  
+  int head_id;
+  int *hposx = malloc(sizeof(int));
+  int *hposy = malloc(sizeof(int));
+  int *aposx = malloc(sizeof(int));
+  int *aposy = malloc(sizeof(int));
 
   int just_sent = 1;
   while(isRunning){
@@ -355,15 +361,11 @@ void game_loop(int sockfd){
       //TODO: calculate collisions. snake->snake, snake->apple
       //Do snake snake collision
       
-      //Do snake apple collision
-      int *hposx = malloc(sizeof(int));
-      int *hposy = malloc(sizeof(int));
-      int *aposx = malloc(sizeof(int));
-      int *aposy = malloc(sizeof(int));
-      int head_id;
+      //Do snake apple collision            
       for(int i = 0; i < MAX_PLAYERS; i++){
         head_id = get_first_ID(i);
         get_pos(head_id, hposx, hposy);
+
         for(int j = 0; j < MAX_APPLES; j++){
           int curr_apple = MAX_LENGTH*MAX_PLAYERS+j;
           get_pos(curr_apple, aposx, aposy);
@@ -373,10 +375,6 @@ void game_loop(int sockfd){
           }
         }
       }
-      free(hposx);
-      free(hposy);
-      free(aposy);
-      free(aposx);
       
       //Despawn apple
       for(int i = 0; i < MAX_APPLES; i++){
@@ -401,6 +399,11 @@ void game_loop(int sockfd){
 
     }
   }
+  
+  free(hposx);
+  free(hposy);
+  free(aposy);
+  free(aposx);
   free(latest_char);
 }
 

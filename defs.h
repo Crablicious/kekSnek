@@ -9,7 +9,7 @@
 #define START_LENGTH 1
 #define MAX_MSG_SIZE 512
 #define MAX_DESIGN_SIZE 2
-#define MAX_PLAYERS 2
+#define MAX_PLAYERS 1
 
 #define SEC_FRAME 0
 #define NSEC_FRAME 75000000
